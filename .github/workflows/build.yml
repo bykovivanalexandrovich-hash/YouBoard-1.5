@@ -12,7 +12,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Unzip project
-        run: unzip -q "MaterialYouKeyboard (1).zip" -d project
+        run: |
+          mkdir -p project
+          unzip -q "MaterialYouKeyboard (1).zip" -d project
+          echo "Project contents:"
+          ls -la project
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -25,12 +29,24 @@ jobs:
         with:
           gradle-version: 8.10.2
 
-      - name: Build APK
-        run: gradle assembleDebug --no-daemon
-        working-directory: project/MaterialYouKeyboard (1)
+      - name: Find and build project
+        shell: bash
+        run: |
+          PROJECT_DIR=$(find project -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -printf '%h\n' | head -n 1)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: Android project not found!"
+            exit 1
+          fi
+
+          echo "Found project: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+
+          gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: MaterialYouKeyboard-debug
-          path: project/MaterialYouKeyboard (1)/app/build/outputs/apk/debug/app-debug.apk
+          path: project/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
